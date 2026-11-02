@@ -1,0 +1,6 @@
+[
+  { "id": 1, "name": "דני", "username": "dani.cohen", "role": "technician", "department": "IT" },
+  { "id": 2, "name": "מיכל", "username": "michal.aharon", "role": "technician", "department": "IT" },
+  { "id": 3, "name": "רינה", "username": "rina.levi", "role": "employee", "department": "שיווק" },
+  { "id": 4, "name": "יוסי", "username": "yossi.mizrahi", "role": "employee", "department": "פיתוח" }
+]
