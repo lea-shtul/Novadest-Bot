@@ -1,108 +1,164 @@
-# NovaDesk Lite
+# NovaDesk Lite 🛠️
 
-A bot that answers Nova Tech employees' IT questions **only** from the company's internal
-knowledge (guides, glossary, resolved tickets), using RAG. If nothing relevant is found,
-it says so honestly, without calling the LLM at all. You talk to it through a Streamlit chat page.
+בוט תמיכה טכנית לעובדי החברה הבדיונית **נובה טק**. הבוט עונה על שאלות IT **רק מתוך המידע הפנימי של החברה**: מדריכים של צוות IT, מילון מונחים פנימי וטיקטים שכבר נפתרו. לכל תשובה מצורפים המקורות שלה, וכשאין מידע מתאים במאגר הבוט אומר "לא מצאתי" במקום להמציא.
+
+**למה צריך את זה?** צ'אטבוט ציבורי לא יודע מה זה NovaConnect, באיזו קומה נמצאת HP-3F, או איך טכנאי של החברה פתר בעיה של דפים לבנים במדפסת. הבוט הזה יודע, כי הוא בנוי על הידע של הארגון עצמו (RAG).
+
+---
+
+## 💬 דוגמאות
+
+| שאלה | מה הבוט עושה | למה |
+|---|---|---|
+| יוצאים דפים לבנים מהמדפסת בקומה 3 | ✅ עונה, מקור: טיקט 1043 | יש טיקט פתור בדיוק על זה |
+| אני בבית קפה וה-VPN לא מתחבר | ✅ עונה, מקור: מדריך NovaConnect | המדריך מכסה התחברות מבחוץ |
+| מה זה בקשה ירוקה? | ✅ עונה, מקור: המילון | מונח פנימי של החברה |
+| איך עובדים מהבית? | ✅ עונה משני מדריכים | משלב את מדריך קליטת העובד ואת מדריך ה-VPN |
+| המדפסת בבית שלי לא מדפיסה | ❌ לא מצאתי | המדריכים מדברים רק על מדפסות המשרד |
+| מתכון לעוגת שוקולד | ❌ לא מצאתי | לא קשור ל-IT בכלל |
+
+---
+
+## ⚙️ איך זה עובד
+
+הפרויקט בנוי משני מסלולים.
+
+### 1. טעינת הידע (רץ פעם אחת)
+
+```mermaid
+flowchart LR
+    A[data folder] --> B[chunking.py]
+    B --> C[gemini-embedding-2]
+    C --> D[(ChromaDB)]
+```
+
+1. **קבצי המקור** (`data/`): 12 מדריכים, מילון של 22 מונחים, 29 טיקטים פתורים ו-4 משתמשים.
+2. **חיתוך לקטעים** (`chunking.py`):
+   - מדריך: קטע אחד לכל כותרת `##`
+   - מילון: קטע אחד לכל מונח
+   - טיקט: קטע אחד שלם, כדי שהבעיה והפתרון יישארו יחד
+   - לכל קטע יש כותרת הקשר בעברית ומזהה קבוע, למשל `guide-01-vpn-from-home-3` או `ticket-1043`
+3. **הפיכה לוקטורים** (`models.py`): כל קטע נשלח ל-Gemini embeddings בקבוצות של 10, עם ניסיון חוזר כשהשירות עמוס.
+4. **שמירה** (`store.py`): ChromaDB שנשמר בדיסק, עם מרחק cosine.
+
+### 2. מסלול השאלה (רץ על כל שאלה)
+
+```mermaid
+flowchart TD
+    Q[Question] --> E[Embed question]
+    E --> R[Retrieve top 4 chunks]
+    R --> T{top_score >= 0.67 ?}
+    T -- no --> N[Not found]
+    T -- yes --> L[Gemini LLM]
+    L --> J{NO_ANSWER ?}
+    J -- yes --> N
+    J -- no --> A[Answer + sources]
+```
+
+1. השאלה הופכת לוקטור.
+2. נשלפים 4 הקטעים הכי דומים מ-ChromaDB.
+3. **שער 1, הסף:** אם הקטע הכי קרוב קיבל ציון נמוך מ-0.67, הבוט עונה "לא מצאתי" **בלי לפנות ל-LLM בכלל**.
+4. הקטעים והשאלה נשלחים ל-Gemini, עם הוראות לענות רק מתוך הקטעים.
+5. **שער 2, השופט:** אם ה-LLM מזהה שהקטעים רק נוגעים בנושא דומה ולא באמת עונים, הוא מחזיר `NO_ANSWER`, והבוט עונה "לא מצאתי".
+6. אחרת, מוצגת התשובה עם המקורות שלה.
+
+---
+
+## 🧰 טכנולוגיות
+
+| חלק | טכנולוגיה | תפקיד |
+|---|---|---|
+| שפה | Python | |
+| RAG | LlamaIndex | חיבור בין החיתוך, המאגר והמודלים |
+| מאגר וקטורים | ChromaDB | שמירת הקטעים והוקטורים בדיסק |
+| מודל שפה | Gemini (`gemini-3.5-flash-lite`) | ניסוח התשובה ושיפוט הרלוונטיות |
+| Embeddings | Gemini (`gemini-embedding-2`) | הפיכת טקסט לוקטור |
+| ממשק | Streamlit | צ'אט בעברית, מימין לשמאל |
+| מודלי נתונים | Pydantic | `Source`, `AnswerResult` |
+| הגדרות | python-dotenv | קריאת `.env` |
+
+---
+
+## 📁 מבנה הפרויקט
 
 ```
-Ingest (once):    documents → chunking → embedding → Chroma
-Every question:   question → embedding → retrieval → threshold → LLM → answer with sources
+├── app/
+│   ├── config.py          # ההגדרות מ-.env
+│   ├── ingest.py          # טעינת הידע ל-ChromaDB
+│   └── rag/
+│       ├── models.py      # חיבור ל-Gemini (LLM ו-embeddings)
+│       ├── chunking.py    # חיתוך המדריכים, המילון והטיקטים
+│       ├── store.py       # ChromaDB: שמירה ושליפה
+│       ├── prompts.py     # ההוראות ל-LLM
+│       └── pipeline.py    # answer_question: כל מסלול השאלה
+├── data/
+│   ├── guides/            # 12 מדריכים
+│   ├── glossary.md        # מילון מונחים
+│   ├── seed_tickets.json  # טיקטים פתורים
+│   ├── seed_users.json    # משתמשים וטכנאים
+│   └── test_questions.json
+├── tools/
+│   └── threshold_experiment.py  # הניסוי לקביעת הסף
+├── chat_ui.py             # ממשק Streamlit
+└── .env.example
 ```
 
-Full design: [SPEC.md](SPEC.md).
+---
 
-## Requirements
+## 🚀 הרצה
 
-- Windows + PowerShell, Python 3.12+ (tested on 3.13)
-- A Gemini API key (free tier works)
-
-## Setup (once)
+**דרישות:** Python 3.11 ומעלה, ומפתח API של Google AI Studio.
 
 ```powershell
-cd novadesk
+# 1. סביבה וירטואלית
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1          # your prompt now starts with (.venv)
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env           # then put your key in GOOGLE_API_KEY
-```
 
-If `Activate.ps1` is blocked ("running scripts is disabled"), run once:
-`Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
+# 2. הגדרות: להעתיק ולהכניס את המפתח ל-GOOGLE_API_KEY
+copy .env.example .env
 
-**Every new terminal:** `cd novadesk` and `.\.venv\Scripts\Activate.ps1` before running anything.
-
-## Build the knowledge base
-
-```powershell
+# 3. טעינת הידע ל-ChromaDB (פעם אחת, או אחרי שינוי ב-data)
 python -m app.ingest
-```
 
-Deletes and rebuilds `storage/chroma` from `data/`. Expected summary: 69 guide, 22 glossary,
-27 ticket chunks. Run it again whenever `data/` changes.
-
-The free tier allows ~100 embeddings per minute, so ingest will pause and retry
-(`provider error ... Waiting Ns`). That's normal. Wait a minute between runs.
-
-## Run the chat
-
-```powershell
-cd novadesk
-.\.venv\Scripts\Activate.ps1
+# 4. הפעלת הצ'אט
 streamlit run chat_ui.py
 ```
 
-Then open http://localhost:8501 (Streamlit usually opens it for you). Stop it with Ctrl+C.
+### הגדרות ב-`.env`
 
-Run it from `novadesk/` (the project root): that's where `.streamlit/config.toml` is read from,
-and Streamlit puts the script's folder on the import path, which makes `from app...` work.
+| משתנה | ערך | מה הוא קובע |
+|---|---|---|
+| `GOOGLE_API_KEY` | | המפתח ל-Gemini (לא עולה ל-Git) |
+| `LLM_MODEL` | `gemini-3.5-flash-lite` | מודל השפה |
+| `EMBED_MODEL` | `gemini-embedding-2` | מודל ה-embeddings |
+| `SIMILARITY_THRESHOLD` | `0.67` | הסף של שער 1 |
+| `TOP_K` | `4` | כמה קטעים נשלפים לכל שאלה |
+| `EMBED_BATCH_SIZE` | `10` | כמה קטעים נשלחים יחד בטעינה |
+| `EMBED_MAX_RETRIES` | `6` | כמה פעמים לנסות שוב כש-Gemini עמוס |
 
-What you'll see for a question:
-- **An answer** in Hebrew, with the retrieved chunks under "קטעים שנבדקו".
-- **"לא מצאתי מידע..."**: nothing passed the threshold (**no LLM call was made**), or the LLM replied `NO_ANSWER`.
-- **"השירות לא זמין כרגע..."**: Gemini is over quota or unreachable.
+---
 
-The terminal logs each decision, e.g. `top_score=0.685, 0/4 chunks >= 0.75 -> no LLM call`.
+## 🧠 החלטות מעניינות
 
-## Tools (retrieval only, no LLM)
+**קידומות ל-embeddings.** המודל `gemini-embedding-2` לא מבחין לבד בין שאלה למסמך, אז מוסיפים קידומת: `task: search result | query:` לשאלות, ו-`title: none | text:` לקטעים. בלי הקידומות, סעיף "נייר נתקע" במדריך המדפסות דורג מעל טיקט 1043, שהוא בדיוק התשובה לדפים לבנים.
 
-Run from `novadesk/`:
+**חיתוך לפי סעיפים.** כל `##` הוא קטע אחד, וכל טיקט הוא קטע שלם, כדי שהבעיה והפתרון לא ייחתכו באמצע.
 
-```powershell
-python -m tools.search "יוצאים דפים לבנים מהמדפסת בקומה 3"   # the 4 closest chunks and their scores
-python -m tools.threshold_experiment                         # SPEC section 8: pick SIMILARITY_THRESHOLD
-```
+**מדריך גובר על טיקט.** כשיש סתירה, ה-LLM מקבל הוראה להעדיף את המדריך הרשמי, ומבין שני טיקטים, את החדש יותר.
 
-Both use the embedding API only, never the LLM.
+**הגנה מעקיפת ההוראות.** ההוראות ל-LLM נשלחות כ-system prompt, והשאלה עטופה בתגיות, כך שעובד לא יכול לכתוב "תתעלם מההוראות". רוב הניסיונות האלה נעצרים כבר בשער 1, כי הם לא דומים לשום דבר במאגר.
 
-## Settings (`.env`)
+**למה התשובות מנוסחות קצת אחרת בכל פעם?** מודלי Gemini 3 עובדים עם temperature 1.0, וגוגל ממליצים לא להוריד אותו. השליפה, הציונים והמקורות קבועים, ורק הניסוח משתנה.
 
-| Key | Meaning |
-|---|---|
-| `GOOGLE_API_KEY` | Gemini API key (secret, never commit `.env`) |
-| `LLM_MODEL`, `EMBED_MODEL` | Gemini model names |
-| `TOP_K` | How many chunks to retrieve per question |
-| `SIMILARITY_THRESHOLD` | Minimum score to count a chunk as relevant. Set it with `python -m tools.threshold_experiment` |
-| `EMBED_BATCH_SIZE`, `EMBED_MAX_RETRIES` | Ingest batching and retries after quota errors |
-| `CHROMA_PATH`, `CHROMA_COLLECTION` | Where the vector store lives |
+---
 
-Changing a setting requires restarting the chat. Changing `EMBED_MODEL` also requires
-re-running `python -m app.ingest`.
+## 🚧 מגבלות
 
-## Project structure
+- כל שאלה עומדת בפני עצמה. הבוט לא זוכר את ההודעות הקודמות בשיחה.
+- המאגר נבנה מחדש מאפס בכל טעינה, ואין עדכון הדרגתי.
+- הנתונים בדיוניים, ונכתבו במיוחד לפרויקט.
 
-```
-chat_ui.py             # streamlit run chat_ui.py  (the chat UI)
-.streamlit/config.toml # Streamlit settings (no usage stats, no email prompt)
-app/
-├── config.py          # .env → one Settings object
-├── ingest.py          # python -m app.ingest
-└── rag/               # all RAG logic lives here
-    ├── models.py      # the only file that knows it's Gemini (+ embedding prefixes)
-    ├── chunking.py    # documents → chunks
-    ├── store.py       # the only file that talks to Chroma
-    ├── prompts.py     # all text the LLM sees
-    └── pipeline.py    # retrieve → threshold → generate → sources
-tools/
-├── search.py               # python -m tools.search "question"
-└── threshold_experiment.py # python -m tools.threshold_experiment
-```
+---
+
+**לאה שטול** · פרויקט קורס, שנה ב'
