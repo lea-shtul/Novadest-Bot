@@ -69,6 +69,10 @@ class _PrefixedGeminiEmbedding(GoogleGenAIEmbedding):
         return await super()._aembed_texts(_add_prefix(texts, task_type), task_type)
 
 
+
+#פונקציה שמקבלת חלק- טקסט ומדביקה לו את המדבקה, אם זה שאלה- שאלה, אם זה טיקט או מידע דאטה שלי - דאטה
+#הכל עובר דרך הפונקציה הזו aembed_texts ולכן דרסתי אותה וכל טקסט שיעבור אמבדינג יקבל מדבקה
+#בלי מדבקות, Gemini מחפש טקסט שנשמע כמו השאלה. עם מדבקות, הוא מחפש טקסט שעונה על השאלה.
 def _add_prefix(texts: list[str], task_type: str | None) -> list[str]:
     prefix = _QUERY_PREFIX if task_type == _QUERY_TASK_TYPE else _DOCUMENT_PREFIX
     return [prefix + text for text in texts]

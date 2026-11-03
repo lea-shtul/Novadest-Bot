@@ -1,7 +1,7 @@
 # NovaDesk Lite: Server Spec
 
 > A small, focused version of NovaDesk: a bot that answers employees' questions **only** from the internal knowledge of a fictional company, using RAG.
-> This phase is **the server only**. The frontend will be built separately, later.
+> This phase is **the server only**. The chat UI (Streamlit, `chat_ui.py`) was added afterwards; see section 10.
 
 ---
 
@@ -278,4 +278,4 @@ Not built now, but the structure allows adding them without breaking anything:
 2. A technician closing a ticket and adding it to the knowledge base (`upsert_ticket` in `store.py`)
 3. Conversation, with rewriting of follow-up questions
 4. Users and permissions
-5. Frontend (React + TypeScript), built separately
+5. ~~A separate frontend~~: done instead as a minimal **Streamlit** chat UI (`chat_ui.py`, not React). It calls `answer_question` directly, without HTTP

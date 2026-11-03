@@ -1,0 +1,9 @@
+# Streamlit settings. Read from the folder you run `streamlit run` in (the project root).
+
+[browser]
+# Don't send usage statistics to Streamlit.
+gatherUsageStats = false
+
+[server]
+# Don't ask for an email address on the first run.
+showEmailPrompt = false

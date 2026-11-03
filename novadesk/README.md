@@ -64,6 +64,22 @@ Open http://localhost:8000/docs (Swagger) to try it.
 
 The console logs each decision, e.g. `top_score=0.685, 0/4 chunks >= 0.75 -> no LLM call`.
 
+## Chat UI
+
+A minimal chat page (Streamlit) in `chat_ui.py`. It calls the RAG pipeline directly, so the
+FastAPI server does **not** need to be running. Build the knowledge base first (above).
+
+```powershell
+cd novadesk
+.\.venv\Scripts\Activate.ps1
+streamlit run chat_ui.py
+```
+
+Then open http://localhost:8501 (Streamlit usually opens it for you). Stop it with Ctrl+C.
+
+Run it from `novadesk/` (the project root): that's where `.streamlit/config.toml` is read from,
+and Streamlit puts the script's folder on the import path, which makes `from app...` work.
+
 ## Debug retrieval
 
 ```powershell
@@ -91,6 +107,8 @@ settings also requires re-running `python -m app.ingest`.
 ## Project structure
 
 ```
+chat_ui.py             # streamlit run chat_ui.py  (the chat UI)
+.streamlit/config.toml # Streamlit settings (no usage stats, no email prompt)
 app/
 ├── config.py          # .env → one Settings object
 ├── main.py            # FastAPI app, CORS, /health, router wiring

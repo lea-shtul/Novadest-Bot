@@ -15,7 +15,7 @@ from pydantic import BaseModel, model_serializer
 from app.config import settings
 from app.rag import store
 from app.rag.models import get_llm, is_provider_error
-from app.rag.prompts import ANSWER_PROMPT, format_context
+from app.rag.prompts import ANSWER_PROMPT, NO_ANSWER, format_context
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +71,10 @@ def answer_question(question: str) -> AnswerResult:
     )
     with _provider_errors():  # the LLM call
         answer = _generate(question, relevant)
+    
+    if answer.strip().strip(".") == NO_ANSWER:
+        logger.info("top_score=%.3f -> stopped by llm (NO_ANSWER)", top_score)
+        return AnswerResult(answered=False, answer=None, sources=[], top_score=top_score)
     return AnswerResult(
         answered=True,
         answer=answer,

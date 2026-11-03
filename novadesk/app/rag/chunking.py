@@ -16,9 +16,7 @@ from llama_index.core.utils import get_tokenizer
 
 from app.config import settings
 
-# The same tokenizer SentenceSplitter uses by default (tiktoken), so our
-# "does it fit?" check and the splitter agree on what a token is.
-# For Hebrew this is an approximation of Gemini's real token count.
+#פונקציה למבדה שמקבלת טקסט ומחזירה כמה טוקנים יש בטקסט
 _count_tokens = lambda text: len(get_tokenizer()(text))
 
 
@@ -122,6 +120,8 @@ def _split_sections(body: str) -> list[tuple[str, str]]:
     return sections
 
 
+
+#פונקציה שמקבלת קטע ובודקת האם היא לא מדי גדולה מעל ה512 טוקנים אם כן מחלקת את הקטע
 def _section_to_nodes(header: str, text: str, base_id: str, metadata: dict) -> list[TextNode]:
     """The safety net: one node if the section fits, otherwise split into parts.
 

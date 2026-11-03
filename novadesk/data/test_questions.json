@@ -1,0 +1,173 @@
+{
+  "_about": "שאלות בדיקה לניסוי קביעת הסף. מריצים את כולן, רושמים את ציון הדמיון של הקטע הכי קרוב, ומחפשים ערך שמפריד בין שתי הקבוצות. השאלות מנוסחות בכוונה במילים אחרות מאלה שבמסמכים.",
+  "answerable": [
+    {
+      "id": "a01",
+      "question": "אני בבית קפה וה-VPN לא מתחבר, מה עושים?",
+      "expected_source": "guide:01-vpn-from-home"
+    },
+    {
+      "id": "a02",
+      "question": "החלפתי אייפון, איך מעבירים את אפליקציית הקודים?",
+      "expected_source": "guide:02-novaauth-2fa"
+    },
+    {
+      "id": "a03",
+      "question": "הקלדתי סיסמה לא נכונה כמה פעמים ועכשיו אני חסום",
+      "expected_source": "guide:03-password-reset"
+    },
+    {
+      "id": "a04",
+      "question": "יוצאים דפים לבנים מהמדפסת בקומה 3",
+      "expected_source": "ticket:1043"
+    },
+    {
+      "id": "a05",
+      "question": "איך מזמינים מסך נוסף לעמדה שלי?",
+      "expected_source": "guide:06-green-request"
+    },
+    {
+      "id": "a06",
+      "question": "מגיע אורח לפגישה, לאיזו רשת אלחוטית הוא מתחבר ומה הסיסמה?",
+      "expected_source": "guide:08-office-wifi"
+    },
+    {
+      "id": "a07",
+      "question": "לא קופצות לי התראות כשמגיעה הודעה בטימס",
+      "expected_source": "ticket:1027"
+    },
+    {
+      "id": "a08",
+      "question": "מחקתי בטעות מצגת מהתיקייה המשותפת לפני שבוע",
+      "expected_source": "guide:10-shared-folders"
+    },
+    {
+      "id": "a09",
+      "question": "המקלדת נתקעה על אנגלית ואני לא מצליחה לעבור לעברית",
+      "expected_source": "ticket:1029"
+    },
+    {
+      "id": "a10",
+      "question": "מה זה בקשה ירוקה?",
+      "expected_source": "glossary"
+    },
+    {
+      "id": "a11",
+      "question": "קיבלתי מייל שמבקש ממני לאשר את הסיסמה דרך קישור, מה לעשות?",
+      "expected_source": "guide:12-phishing-security"
+    },
+    {
+      "id": "a12",
+      "question": "באפליקציה בטלפון לא רואים את הפגישות ביומן",
+      "expected_source": "ticket:1040"
+    },
+    {
+      "id": "a13",
+      "question": "איך עובדים מהבית?",
+      "expected_source": "guide:01-vpn-from-home"
+    },
+    {
+      "id": "a14",
+      "question": "ה VS CODE עושה לי בעיות",
+      "expected_source": "ticket:1042"
+    }
+  ],
+  "unanswerable": [
+    {
+      "id": "u01",
+      "question": "OneDrive לא מסנכרן לי קבצים",
+      "type": "demo",
+      "note": "שמורה להדגמה. לא להוסיף מידע על OneDrive למאגר לפני ההצגה"
+    },
+    {
+      "id": "u02",
+      "question": "איך מגישים בקשה לימי חופשה?",
+      "type": "near_miss",
+      "note": "נושא של משאבי אנוש. קרוב למדריך קליטת עובד חדש"
+    },
+    {
+      "id": "u03",
+      "question": "המדפסת בבית שלי לא מדפיסה",
+      "type": "near_miss",
+      "note": "מדפסת ביתית, לא של המשרד"
+    },
+    {
+      "id": "u04",
+      "question": "איפה אפשר לחנות ליד המשרד?",
+      "type": "out_of_scope",
+      "note": "לא קשור ל-IT"
+    },
+    {
+      "id": "u05",
+      "question": "מה שעות הפתיחה של חדר האוכל?",
+      "type": "out_of_scope",
+      "note": "לא קשור ל-IT"
+    },
+    {
+      "id": "u06",
+      "question": "איך משנים את תמונת הרקע במחשב?",
+      "type": "out_of_scope",
+      "note": "לא מכוסה בשום מסמך"
+    },
+    {
+      "id": "u07",
+      "question": "הטלפון הקווי בשולחן שלי לא מצלצל",
+      "type": "near_miss",
+      "note": "קרוב לשלוחות, אבל אין מידע על טלפונים קוויים"
+    },
+    {
+      "id": "u08",
+      "question": "Excel קורס כשאני פותח קובץ גדול",
+      "type": "near_miss",
+      "note": "קרוב לטיקט 1022 על Excel, אבל בעיה אחרת"
+    },
+    {
+      "id": "u09",
+      "question": "איך מוסיפים חתימה למייל ב-Outlook?",
+      "type": "near_miss",
+      "note": "קרוב למדריכים על Outlook"
+    },
+    {
+      "id": "u10",
+      "question": "המחשב לא נדלק בכלל",
+      "type": "out_of_scope",
+      "note": "לא מכוסה בשום מסמך"
+    },
+    {
+      "id": "u11",
+      "question": "מה הסיסמה של הראוטר שלי בבית?",
+      "type": "near_miss",
+      "note": "קרוב לטיקט 1023 על הראוטר הביתי"
+    },
+    {
+      "id": "u12",
+      "question": "איך מזמינים מונית לאורח?",
+      "type": "near_miss",
+      "note": "קרוב לנושא האורחים ב-Wi-Fi"
+    },
+    {
+      "id": "u13",
+      "question": "מתכון לעוגת שוקולד",
+      "type": "out_of_scope",
+      "note": "לא קשור בכלל"
+    },
+    {
+      "id": "u14",
+      "question": "מי ניצח במונדיאל",
+      "type": "out_of_scope",
+      "note": "לא קשור בכלל"
+    },
+    {
+      "id": "u15",
+      "question": "איך מתקינים Windows מאפס?",
+      "type": "near_miss",
+      "note": "IT כללי, לא של נובה טק"
+    },
+    {
+      "id": "u16",
+      "question": "מה מזג האוויר מחר?",
+      "type": "out_of_scope",
+      "note": "לא קשור בכלל"
+    }
+  ]
+}
