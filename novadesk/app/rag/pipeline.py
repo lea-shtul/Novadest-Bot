@@ -1,16 +1,12 @@
-"""The /ask pipeline: question -> retrieval -> threshold -> LLM -> answer with sources.
+"""question -> retrieval -> threshold -> LLM -> answer with sources.
 
-answer_question() reads top to bottom like the spec:
-    store.retrieve() -> _apply_threshold() -> _generate() -> _build_sources()
-If no chunk passes the threshold we stop BEFORE _generate(): no LLM call.
+If no chunk passes the threshold, we stop before the LLM: no LLM call.
 """
 
 import logging
 from collections.abc import Iterator
 from contextlib import contextmanager
-
-from llama_index.core.schema import NodeWithScore
-from pydantic import BaseModel, model_serializer
+from dataclasses import dataclass
 
 from app.config import settings
 from app.rag import store
@@ -19,32 +15,23 @@ from app.rag.prompts import ANSWER_PROMPT, NO_ANSWER, format_context
 
 logger = logging.getLogger(__name__)
 
-_llm = None  # created on first use, then reused
-
 
 class ProviderUnavailableError(Exception):
-    """The AI provider is temporarily unavailable (quota or network). /ask turns this into 503."""
+    """The AI provider is temporarily unavailable (quota or network): "try again in a minute"."""
 
 
-class Source(BaseModel):
-    """One entry in the response's `sources` list."""
-
+@dataclass
+class Source:
     type: str  # "guide" / "glossary" / "ticket"
     id: str  # e.g. "04-printers", "glossary", "1043"
     title: str
-    section: str | None = None  # guide and glossary only
-    resolved_by_name: str | None = None  # tickets only
+    section: str | None  # guide and glossary only
+    resolved_by_name: str | None  # tickets only
     score: float
 
-    @model_serializer(mode="wrap")
-    def _drop_missing_fields(self, handler):
-        """In JSON, leave out fields that don't apply (a ticket has no `section`)."""
-        return {key: value for key, value in handler(self).items() if value is not None}
 
-
-class AnswerResult(BaseModel):
-    """What /ask returns (SPEC section 7)."""
-
+@dataclass
+class AnswerResult:
     answered: bool
     answer: str | None
     sources: list[Source]
@@ -56,68 +43,41 @@ def answer_question(question: str) -> AnswerResult:
     with _provider_errors():  # embedding the question calls Gemini
         results = store.retrieve(question)
     top_score = round(results[0].score, 3) if results else None
-
-    relevant = _apply_threshold(results)
-    if not relevant:
-        logger.info(
-            "retrieval: top_score=%s, 0/%d chunks >= %s -> no LLM call",
-            top_score, len(results), settings.similarity_threshold,
-        )
-        return AnswerResult(answered=False, answer=None, sources=[], top_score=top_score)
+    relevant = [r for r in results if r.score >= settings.similarity_threshold]
 
     logger.info(
-        "retrieval: top_score=%s, %d/%d chunks >= %s -> calling LLM",
+        "retrieval: top_score=%s, %d/%d chunks >= %s -> %s",
         top_score, len(relevant), len(results), settings.similarity_threshold,
+        "calling LLM" if relevant else "no LLM call",
     )
-    with _provider_errors():  # the LLM call
-        answer = _generate(question, relevant)
-    
-    if answer.strip().strip(".") == NO_ANSWER:
+    if not relevant:
+        return AnswerResult(answered=False, answer=None, sources=[], top_score=top_score)
+
+    prompt = ANSWER_PROMPT.format(context=format_context(relevant), question=question)
+    with _provider_errors():  # the one LLM call
+        answer = get_llm().complete(prompt).text.strip()
+
+    if answer.strip(".") == NO_ANSWER:
         logger.info("top_score=%.3f -> stopped by llm (NO_ANSWER)", top_score)
         return AnswerResult(answered=False, answer=None, sources=[], top_score=top_score)
-    return AnswerResult(
-        answered=True,
-        answer=answer,
-        sources=_build_sources(relevant),
-        top_score=top_score,
-    )
 
-
-def _apply_threshold(results: list[NodeWithScore]) -> list[NodeWithScore]:
-    """Keep only chunks whose similarity is at least SIMILARITY_THRESHOLD."""
-    return [r for r in results if r.score >= settings.similarity_threshold]
-
-
-def _generate(question: str, nodes: list[NodeWithScore]) -> str:
-    """Exactly one LLM call: the prompt filled with the relevant chunks and the question."""
-    prompt = ANSWER_PROMPT.format(context=format_context(nodes), question=question)
-    return _get_llm().complete(prompt).text.strip()
-
-
-def _build_sources(nodes: list[NodeWithScore]) -> list[Source]:
-    """Turn each relevant chunk's metadata into a Source for the response."""
-    sources = []
-    for result in nodes:
-        meta = result.node.metadata
-        sources.append(
-            Source(
-                type=meta["source_type"],
-                id=meta["source_id"],
-                title=meta["title"],
-                section=meta.get("section"),  # .get -> None when the key doesn't exist
-                resolved_by_name=meta.get("resolved_by_name"),
-                score=round(result.score, 3),
-            )
+    sources = [
+        Source(
+            type=r.node.metadata["source_type"],
+            id=r.node.metadata["source_id"],
+            title=r.node.metadata["title"],
+            section=r.node.metadata.get("section"),
+            resolved_by_name=r.node.metadata.get("resolved_by_name"),
+            score=round(r.score, 3),
         )
-    return sources
+        for r in relevant
+    ]
+    return AnswerResult(answered=True, answer=answer, sources=sources, top_score=top_score)
 
 
 @contextmanager
 def _provider_errors() -> Iterator[None]:
-    """Inside this block, a quota/network error becomes ProviderUnavailableError.
-
-    Any other error (a real bug) passes through unchanged, so it's not hidden behind a 503.
-    """
+    """Turn quota/network errors into ProviderUnavailableError; a real bug passes through unchanged."""
     try:
         yield
     except Exception as exc:
@@ -125,10 +85,3 @@ def _provider_errors() -> Iterator[None]:
             logger.warning("provider unavailable: %s", str(exc)[:200])
             raise ProviderUnavailableError() from exc
         raise
-
-
-def _get_llm():
-    global _llm
-    if _llm is None:
-        _llm = get_llm()
-    return _llm
