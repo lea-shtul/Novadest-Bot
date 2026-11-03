@@ -8,7 +8,7 @@ from llama_index.core.schema import NodeWithScore
 
 NO_ANSWER = "NO_ANSWER"
 
-ANSWER_PROMPT = """You are the IT support bot of Nova Tech. You answer the company's employees.
+SYSTEM_PROMPT = """You are the IT support bot of Nova Tech. You answer the company's employees.
 
 Rules:
 1. Answer only from the chunks below. Do not use general knowledge, and do not invent names of systems, extensions or paths.
@@ -18,11 +18,15 @@ Rules:
 5. Be short and clear. When there are steps, write them as a numbered list.
 6. If the chunks only touch a similar topic but do not help solve the employee's problem, reply with exactly NO_ANSWER and nothing else. If they answer only part of the question, follow rule 2 instead, and do not return NO_ANSWER.
 7. Always write your answer in Hebrew.
+"""
 
-Chunks:
+USER_PROMPT = """<chunks>
 {context}
+</chunks>
 
-Question: {question}
+<question>
+{question}
+</question>
 """
 
 

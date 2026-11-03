@@ -8,10 +8,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 
+from llama_index.core.llms import ChatMessage
+
 from app.config import settings
 from app.rag import store
 from app.rag.models import get_llm, is_provider_error
-from app.rag.prompts import ANSWER_PROMPT, NO_ANSWER, format_context
+from app.rag.prompts import NO_ANSWER, SYSTEM_PROMPT, USER_PROMPT, format_context
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +55,12 @@ def answer_question(question: str) -> AnswerResult:
     if not relevant:
         return AnswerResult(answered=False, answer=None, sources=[], top_score=top_score)
 
-    prompt = ANSWER_PROMPT.format(context=format_context(relevant), question=question)
+    messages = [
+        ChatMessage(role="system", content=SYSTEM_PROMPT),
+        ChatMessage(role="user", content=USER_PROMPT.format(context=format_context(relevant), question=question)),
+    ]
     with _provider_errors():  # the one LLM call
-        answer = get_llm().complete(prompt).text.strip()
+        answer = get_llm().chat(messages).message.content.strip()
 
     if answer.strip(".") == NO_ANSWER:
         logger.info("top_score=%.3f -> stopped by llm (NO_ANSWER)", top_score)
