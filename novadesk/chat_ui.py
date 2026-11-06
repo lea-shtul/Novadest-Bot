@@ -3,14 +3,15 @@
 Run from the project root:  streamlit run chat_ui.py
 
 Calls the RAG pipeline directly (no HTTP), so the FastAPI server doesn't need to be running.
-The history is for display only: each question is answered on its own.
+The UI holds the conversation and sends it with every question, so follow-ups like
+"and if that doesn't help?" are understood. The pipeline itself keeps no state.
 """
 
 import logging
 
 import streamlit as st
 
-from app.rag.pipeline import ProviderUnavailableError, answer_question
+from app.rag.pipeline import ProviderUnavailableError, Turn, answer_question
 
 logging.basicConfig(level=logging.INFO)  # show the pipeline's log lines (and errors) in the terminal
 logger = logging.getLogger("chat_ui")
@@ -36,19 +37,38 @@ RTL_CSS = """
 """
 
 
-def ask(question: str) -> dict:
+def ask(question: str, history: list[Turn]) -> dict:
     """Run the pipeline and turn the result (or error) into a message to display."""
     try:
-        result = answer_question(question)
+        result = answer_question(question, history)
     except ProviderUnavailableError:
         return {"role": "assistant", "kind": "error", "text": UNAVAILABLE}
     except Exception:
         logger.exception("answer_question failed")  # the real error, in the terminal
         return {"role": "assistant", "kind": "error", "text": GENERIC_ERROR}
 
+    # Shown under the reply only when the rewrite actually changed the question.
+    searched = result.search_query if result.search_query != question else None
     if not result.answered:
-        return {"role": "assistant", "kind": "not_found", "text": NOT_FOUND}
-    return {"role": "assistant", "kind": "answer", "text": result.answer, "sources": result.sources}
+        return {"role": "assistant", "kind": "not_found", "text": NOT_FOUND, "searched": searched}
+    return {
+        "role": "assistant", "kind": "answer", "text": result.answer,
+        "sources": result.sources, "searched": searched,
+    }
+
+
+def to_turns(history: list[dict]) -> list[Turn]:
+    """The display history -> rounds for the pipeline.
+
+    The history alternates: question, reply, question, reply... so each pair is one round.
+    A round that ended in an error is skipped: there is no real answer in it to build on.
+    """
+    questions, replies = history[::2], history[1::2]
+    return [
+        Turn(question=question["text"], answer=reply["text"])
+        for question, reply in zip(questions, replies)
+        if reply["kind"] != "error"
+    ]
 
 
 def show(message: dict) -> None:
@@ -60,6 +80,8 @@ def show(message: dict) -> None:
         st.info(message["text"])
     else:
         st.markdown(message["text"])
+    if message.get("searched"):
+        st.caption(f"חיפשתי: {message['searched']}")
     if kind == "answer":
         with st.expander("קטעים שנבדקו"):
             for source in message["sources"]:
@@ -111,6 +133,6 @@ if question:
         st.markdown(question)
     with st.chat_message("assistant"):
         with st.spinner("חושב..."):
-            reply = ask(question)
+            reply = ask(question, to_turns(st.session_state.history))
         show(reply)
     st.session_state.history += [{"role": "user", "text": question}, reply]

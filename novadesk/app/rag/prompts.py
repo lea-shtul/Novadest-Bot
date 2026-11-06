@@ -1,10 +1,17 @@
-"""All the text the LLM sees: the answer prompt and how chunks are presented to it.
+"""All the text the LLM sees: the answer prompt, the rewrite prompt, and how chunks are presented.
 
 The rules are in English; rule 7 makes the answer Hebrew. Rule 6 lets the LLM reply NO_ANSWER
 when the chunks passed the threshold but don't actually help (the pipeline then answers "not found").
 """
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from llama_index.core.schema import NodeWithScore
+
+if TYPE_CHECKING:  # only for the type hint; a real import would be circular (pipeline imports us)
+    from app.rag.pipeline import Turn
 
 NO_ANSWER = "NO_ANSWER"
 
@@ -29,12 +36,37 @@ USER_PROMPT = """<chunks>
 </question>
 """
 
+# Used before retrieval when there is a conversation: a follow-up like "and if that doesn't help?"
+# has no topic of its own, so searching Chroma with it would find nothing useful.
+REWRITE_PROMPT = """Below is a conversation between an employee and Nova Tech's IT support bot, and then the employee's new question.
+
+Rewrite the new question so it can be understood on its own, without the conversation: replace words like "it", "this" or "that one" with what they refer to, and add the topic from the conversation if it is missing.
+
+Rules:
+1. If the new question is already understandable on its own, or is about a different topic than the conversation, return it exactly as it is.
+2. Do not answer the question. Return only the question, with no explanations and no quotes.
+3. Write the question in Hebrew.
+
+<conversation>
+{history}
+</conversation>
+
+<new_question>
+{question}
+</new_question>
+"""
+
 
 def format_context(nodes: list[NodeWithScore]) -> str:
     """Each chunk = a source line + its text, separated by a blank line."""
     return "\n\n".join(
         f"{_source_line(result.node.metadata)}\n{result.node.text}" for result in nodes
     )
+
+
+def format_history(turns: list[Turn]) -> str:
+    """The conversation as plain text for REWRITE_PROMPT: one "employee/bot" pair per round."""
+    return "\n\n".join(f"Employee: {turn.question}\nBot: {turn.answer}" for turn in turns)
 
 
 def _source_line(metadata: dict) -> str:

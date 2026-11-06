@@ -24,6 +24,7 @@ class Settings:
     llm_model: str
     embed_model: str
     top_k: int
+    history_turns: int
     similarity_threshold: float
     embed_batch_size: int
     embed_max_retries: int
@@ -36,6 +37,7 @@ settings = Settings(
     llm_model=_require("LLM_MODEL"),
     embed_model=_require("EMBED_MODEL"),
     top_k=int(_require("TOP_K")),
+    history_turns=int(_require("HISTORY_TURNS")),  # conversation rounds sent to the LLM
     similarity_threshold=float(_require("SIMILARITY_THRESHOLD")),
     embed_batch_size=int(_require("EMBED_BATCH_SIZE")),
     embed_max_retries=int(_require("EMBED_MAX_RETRIES")),
